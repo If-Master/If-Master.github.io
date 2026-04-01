@@ -30,6 +30,28 @@
       min-height: 100vh;
     }
 
+    .anim-item {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+    }
+    .anim-item.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .anim-item.exit {
+      opacity: 0;
+      transform: translateY(-18px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+
+    .anim-item:nth-child(2) { transition-delay: 0.07s; }
+    .anim-item:nth-child(3) { transition-delay: 0.14s; }
+    .anim-item:nth-child(4) { transition-delay: 0.21s; }
+    .anim-item:nth-child(5) { transition-delay: 0.28s; }
+    .anim-item:nth-child(6) { transition-delay: 0.35s; }
+    .anim-item:nth-child(7) { transition-delay: 0.42s; }
+
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
@@ -176,7 +198,7 @@
       background: var(--surface); border: 1px solid var(--border);
       border-radius: var(--radius);
       display: flex; flex-direction: column;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, opacity 0.45s ease, transform 0.45s ease;
       overflow: hidden;
     }
     .plugin-card:hover { border-color: var(--accent); }
@@ -215,7 +237,7 @@
       border-top: 0px solid var(--border);
     }
     .plugin-drawer.open {
-      max-height: 800px; opacity: 1;
+      max-height: 900px; opacity: 1;
       border-top: 1px solid var(--border);
     }
     .plugin-drawer-inner { padding: 1.25rem 1.75rem 1.5rem; }
@@ -226,7 +248,9 @@
       margin-bottom: 0.6rem; display: block;
     }
 
-    .config-block {
+    .config-editor {
+      display: block;
+      width: 100%;
       background: #07101f;
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -235,15 +259,41 @@
       font-size: 0.78rem;
       color: #8fb4e8;
       line-height: 1.6;
-      max-height: 220px;
-      overflow-y: auto;
-      white-space: pre;
-      word-break: break-all;
-      margin-bottom: 1.25rem;
+      min-height: 180px;
+      max-height: 280px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 0.75rem;
+      tab-size: 2;
     }
-    .config-block::-webkit-scrollbar { width: 5px; }
-    .config-block::-webkit-scrollbar-track { background: #07101f; }
-    .config-block::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .config-editor:focus {
+      border-color: var(--accent);
+    }
+    .config-editor::-webkit-scrollbar { width: 5px; }
+    .config-editor::-webkit-scrollbar-track { background: #07101f; }
+    .config-editor::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .config-hint {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .config-hint::before {
+      content: '✎';
+      color: var(--accent);
+      font-size: 0.85rem;
+    }
+
+    .drawer-actions {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
 
     .download-btn {
       display: inline-flex; align-items: center; gap: 8px;
@@ -252,8 +302,15 @@
       font-size: 0.85rem; font-weight: 600;
       text-decoration: none; transition: background 0.2s, transform 0.15s;
       font-family: 'DM Sans', sans-serif;
+      border: none; cursor: pointer;
     }
     .download-btn:hover { background: #3a7ae8; transform: translateY(-1px); }
+    .download-btn.secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .download-btn.secondary:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
 
     .drawer-loading { font-size: 0.82rem; color: var(--muted); }
 
@@ -306,10 +363,10 @@
       <h2>A little about who I am</h2>
       <p class="section-text">I'm a passionate developer based somewhere on Earth. I love solving real problems with technology, learning new things every day, and building products that matter to people.</p>
       <div class="about-grid">
-        <div class="about-card"><h3>Currently</h3><p>Working on Minecraft plugins such as a claims plugin, and exploring new development challenges.</p></div>
-        <div class="about-card"><h3>Education</h3><p>Multiple degrees - including formal qualifications in SQL and Python. Self-taught in Java, Lua, C++ and more.</p></div>
-        <div class="about-card"><h3>Outside Work</h3><p>Actively chasing new knowledge across multiple disciplines. If I haven't done it before, I want to learn it - that's my hobby.</p></div>
-        <div class="about-card"><h3>Languages</h3><p>Fluent in Finnish, Swedish, and English - plus a few others. Communication across borders is never a problem.</p></div>
+        <div class="about-card anim-item"><h3>Currently</h3><p>Working on Minecraft plugins such as a claims plugin, and exploring new development challenges.</p></div>
+        <div class="about-card anim-item"><h3>Education</h3><p>Multiple degrees - including formal qualifications in SQL and Python. Self-taught in Java, Lua, C++ and more.</p></div>
+        <div class="about-card anim-item"><h3>Outside Work</h3><p>Actively chasing new knowledge across multiple disciplines. If I haven't done it before, I want to learn it - that's my hobby.</p></div>
+        <div class="about-card anim-item"><h3>Languages</h3><p>Fluent in Finnish, Swedish, and English - plus a few others. Communication across borders is never a problem.</p></div>
       </div>
     </div>
 
@@ -320,11 +377,11 @@
       <h2>What I work with</h2>
       <p class="section-text">A snapshot of the tools, languages, and technologies I'm comfortable with.</p>
       <div class="skills-grid">
-        <div class="skill-item"><h3><span class="skill-dot"></span>Frontend</h3><p>HTML, CSS, JavaScript, React - building things people actually see and use.</p></div>
-        <div class="skill-item"><h3><span class="skill-dot"></span>Game Plugin Development</h3><p>Specialising in optimised plugins that use less RAM than typical solutions.</p></div>
-        <div class="skill-item"><h3><span class="skill-dot"></span>Design Standards</h3><p>Everything I ship meets a golden standard. If it's not good enough, it doesn't go out.</p></div>
-        <div class="skill-item"><h3><span class="skill-dot"></span>Spoken Languages</h3><p>Finnish, Swedish, English and more - bridging communication gaps comes naturally.</p></div>
-        <div class="skill-item"><h3><span class="skill-dot"></span>Always Learning</h3><p>Currently exploring: fast and RAM-efficient algorithm development.</p></div>
+        <div class="skill-item anim-item"><h3><span class="skill-dot"></span>Frontend</h3><p>HTML, CSS, JavaScript, React - building things people actually see and use.</p></div>
+        <div class="skill-item anim-item"><h3><span class="skill-dot"></span>Game Plugin Development</h3><p>Specialising in optimised plugins that use less RAM than typical solutions.</p></div>
+        <div class="skill-item anim-item"><h3><span class="skill-dot"></span>Design Standards</h3><p>Everything I ship meets a golden standard. If it's not good enough, it doesn't go out.</p></div>
+        <div class="skill-item anim-item"><h3><span class="skill-dot"></span>Spoken Languages</h3><p>Finnish, Swedish, English and more - bridging communication gaps comes naturally.</p></div>
+        <div class="skill-item anim-item"><h3><span class="skill-dot"></span>Always Learning</h3><p>Currently exploring: fast and RAM-efficient algorithm development.</p></div>
       </div>
     </div>
 
@@ -335,10 +392,10 @@
       <h2>Things I've built</h2>
       <p class="section-text">A selection of personal and professional projects.</p>
       <div class="projects-grid">
-        <div class="project-card"><span class="project-tag">Minecraft Plugin - Playerheads</span><h3>HeadHunter</h3><p>An advanced player head plugin using methods like API pulling, base64 head code and more.</p><a href="https://github.com/If-Master/HeadHunter" class="project-link" target="_blank">github.com/If-Master/HeadHunter ↗</a></div>
-        <div class="project-card"><span class="project-tag">Minecraft Plugin - Chat</span><h3>ItemDisplay</h3><p>Display inventories, items, and admin-pull enderchests and player inventories - works on offline players too.</p><a href="https://github.com/If-Master/ItemDisplay" class="project-link" target="_blank">github.com/If-Master/ItemDisplay ↗</a></div>
-        <div class="project-card"><span class="project-tag">Discord Bots</span><h3>Discord Bots</h3><p>Built everything from regex pattern generators to item search functions across various Discord bots.</p><a href="https://github.com/If-Master/EscapeItems-Discord-Bot" class="project-link" target="_blank">github.com/If-Master/EscapeItems-Discord-Bot ↗</a></div>
-        <div class="project-card"><span class="project-tag">Games</span><h3>Games &amp; More</h3><p>Various games built in Python and C++. Most are still under NDA - more to be revealed in the future.</p></div>
+        <div class="project-card anim-item"><span class="project-tag">Minecraft Plugin - Playerheads</span><h3>HeadHunter</h3><p>An advanced player head plugin using methods like API pulling, base64 head code and more.</p><a href="https://github.com/If-Master/HeadHunter" class="project-link" target="_blank">github.com/If-Master/HeadHunter ↗</a></div>
+        <div class="project-card anim-item"><span class="project-tag">Minecraft Plugin - Chat</span><h3>ItemDisplay</h3><p>Display inventories, items, and admin-pull enderchests and player inventories - works on offline players too.</p><a href="https://github.com/If-Master/ItemDisplay" class="project-link" target="_blank">github.com/If-Master/ItemDisplay ↗</a></div>
+        <div class="project-card anim-item"><span class="project-tag">Discord Bots</span><h3>Discord Bots</h3><p>Built everything from regex pattern generators to item search functions across various Discord bots.</p><a href="https://github.com/If-Master/EscapeItems-Discord-Bot" class="project-link" target="_blank">github.com/If-Master/EscapeItems-Discord-Bot ↗</a></div>
+        <div class="project-card anim-item"><span class="project-tag">Games</span><h3>Games &amp; More</h3><p>Various games built in Python and C++. Most are still under NDA - more to be revealed in the future.</p></div>
       </div>
     </div>
 
@@ -350,8 +407,8 @@
       <div class="contact-inner">
         <p>Whether you have a project in mind, a job opportunity, or just want to say hello - my inbox is always open.</p>
         <div class="social-links">
-          <a href="https://github.com/If-Master" class="social-link" target="_blank"><span class="social-icon">🐙</span> github.com/If-Master</a>
-          <a href="https://discord.gg/8BacRJukbF" class="social-link" target="_blank"><span class="social-icon">🎮</span> discord.gg/8BacRJukbF</a>
+          <a href="https://github.com/If-Master" class="social-link anim-item" target="_blank"><span class="social-icon">🐙</span> github.com/If-Master</a>
+          <a href="https://discord.gg/8BacRJukbF" class="social-link anim-item" target="_blank"><span class="social-icon">🎮</span> discord.gg/8BacRJukbF</a>
         </div>
       </div>
     </div>
@@ -364,7 +421,7 @@
     <div class="plugins-hero">
       <span class="hero-badge">Minecraft &amp; More</span>
       <h1>My <em>Plugins</em></h1>
-      <p>Browse all plugins I've built. Click any card to see the config and download the latest release.</p>
+      <p>Browse all plugins I've built. Click any card to see the config, edit it, and download your custom version.</p>
     </div>
 
     <div class="plugin-tabs-bar">
@@ -380,22 +437,16 @@
 
   <script>
     const PLUGINS = [
-      {
-        repo: 'If-Master/HeadHunter',
-        icon: '🗡️',
-        badges: ['Playerheads', 'Java']
-      },
-      {
-        repo: 'If-Master/ItemDisplay',
-        icon: '📦',
-        badges: ['Chat / Inventory', 'Java']
-      }
+      { repo: 'If-Master/HeadHunter',       icon: '', badges: ['Player heads & Mob Heads', 'Java', 'Paper & Folia'] },
+      { repo: 'If-Master/EventVotePlugin',   icon: '', badges: ['Event Voting System',       'Java', 'Paper & Folia'] },
+      { repo: 'If-Master/DebugStick',        icon: '', badges: ['Debug Stick',               'Java', 'Paper & Folia'] },
+      { repo: 'If-Master/PunishmentSystem',  icon: '', badges: ['Punishment System',         'Java', 'Paper & Folia'] },
+      { repo: 'If-Master/AdvancedClaims',    icon: '', badges: ['Claims System',             'Java', 'Paper & Folia'] },
+      { repo: 'If-Master/ActionRecorder',    icon: '', badges: ['ActionRecorder',            'Java', 'Fabric']        },
+      { repo: 'If-Master/ItemDisplay',       icon: '', badges: ['Item Display',              'Java', 'Paper & Folia'] }
     ];
 
-    const CONFIG_PATHS = [
-      'src/main/resources/config.yml',
-      'config.yml'
-    ];
+    const CONFIG_PATHS = ['src/main/resources/config.yml', 'config.yml'];
 
     function switchPage(pageId, btn) {
       document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
@@ -409,6 +460,15 @@
       const isOpen = panel.classList.contains('open');
       panel.classList.toggle('open', !isOpen);
       btn.classList.toggle('active', !isOpen);
+
+      if (!isOpen) {
+        setTimeout(() => {
+          panel.querySelectorAll('.anim-item').forEach(el => {
+            el.classList.remove('visible', 'exit');
+            scrollObserver.observe(el);
+          });
+        }, 50);
+      }
     }
 
     function switchPluginTab(id, btn) {
@@ -416,6 +476,24 @@
       document.querySelectorAll('.plugin-tab').forEach(b => b.classList.remove('active'));
       document.getElementById('pluginpanel-' + id).classList.add('open');
       btn.classList.add('active');
+    }
+
+    const scrollObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const el = entry.target;
+        if (entry.isIntersecting) {
+          el.dataset.seen = '1';
+          el.classList.remove('exit');
+          el.classList.add('visible');
+        } else if (el.dataset.seen) {
+          el.classList.remove('visible');
+          el.classList.add('exit');
+        }
+      });
+    }, { threshold: 0.12 });
+
+    function observeAnimItems() {
+      document.querySelectorAll('.anim-item').forEach(el => scrollObserver.observe(el));
     }
 
     async function ghFetch(url) {
@@ -427,9 +505,7 @@
     async function fetchConfigYml(repo) {
       for (const path of CONFIG_PATHS) {
         const data = await ghFetch(`https://api.github.com/repos/${repo}/contents/${path}`);
-        if (data && data.content) {
-          return atob(data.content.replace(/\n/g, ''));
-        }
+        if (data && data.content) return atob(data.content.replace(/\n/g, ''));
       }
       return null;
     }
@@ -442,8 +518,26 @@
       return { name: jar.name, url: jar.browser_download_url, version: data.tag_name };
     }
 
+    function downloadConfig(textareaId) {
+      const ta = document.getElementById(textareaId);
+      if (!ta) return;
+      const blob = new Blob([ta.value], { type: 'text/yaml' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'config.yml';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+
+    function resetConfig(textareaId, original) {
+      const ta = document.getElementById(textareaId);
+      if (ta) ta.value = original;
+    }
+
     function toggleDrawer(cardEl, repo) {
-      const btn = cardEl.querySelector('.expand-btn');
+      const btn    = cardEl.querySelector('.expand-btn');
       const drawer = cardEl.querySelector('.plugin-drawer');
       const isOpen = drawer.classList.contains('open');
 
@@ -460,28 +554,40 @@
       drawer.dataset.loaded = '1';
 
       const inner = drawer.querySelector('.plugin-drawer-inner');
-      inner.innerHTML = '<span class="drawer-loading">Loading data from GitHub...</span>';
+      inner.innerHTML = '<span class="drawer-loading">Loading data from GitHub…</span>';
+
+      const uid = 'cfg-' + repo.replace(/\//g, '-');
 
       Promise.all([fetchConfigYml(repo), fetchLatestRelease(repo)]).then(([config, release]) => {
         let html = '';
 
+        html += `<span class="drawer-section-label">config.yml</span>`;
         if (config) {
-          html += `<span class="drawer-section-label">config.yml</span>`;
-          html += `<div class="config-block">${config.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
+          const escaped = config.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          html += `<span class="config-hint">You can edit this config before downloading</span>`;
+          html += `<textarea class="config-editor" id="${uid}" spellcheck="false">${escaped}</textarea>`;
+          html += `<div class="drawer-actions">`;
+          html += `  <button class="download-btn" onclick="downloadConfig('${uid}')">⬇ Download config.yml</button>`;
+          html += `  <button class="download-btn secondary" onclick="resetConfig('${uid}', document.getElementById('${uid}').defaultValue)">↺ Reset</button>`;
+          html += `</div>`;
         } else {
-          html += `<span class="drawer-section-label">config.yml</span>`;
           html += `<p style="font-size:0.82rem;color:var(--muted);margin-bottom:1rem;">No config.yml found in this repository.</p>`;
         }
 
+        html += `<span class="drawer-section-label" style="margin-top:1.25rem;display:block;">Latest Release${release ? ' — ' + release.version : ''}</span>`;
         if (release) {
-          html += `<span class="drawer-section-label">Latest Release - ${release.version}</span>`;
           html += `<a class="download-btn" href="${release.url}" download target="_blank">⬇ Download ${release.name}</a>`;
         } else {
-          html += `<span class="drawer-section-label" style="margin-top:0.25rem;">Latest Release</span>`;
           html += `<p style="font-size:0.82rem;color:var(--muted);">No releases published yet.</p>`;
         }
 
         inner.innerHTML = html;
+
+        const ta = inner.querySelector(`#${uid}`);
+        if (ta) {
+          ta._original = ta.value;
+          inner.querySelector('.download-btn.secondary').onclick = () => { ta.value = ta._original; };
+        }
       });
     }
 
@@ -490,7 +596,7 @@
 
       for (const plugin of PLUGINS) {
         const card = document.createElement('div');
-        card.className = 'plugin-card';
+        card.className = 'plugin-card anim-item';
         card.innerHTML = `
           <div class="plugin-card-main">
             <div class="plugin-card-icon">${plugin.icon}</div>
@@ -510,15 +616,16 @@
           <div class="plugin-drawer"><div class="plugin-drawer-inner"></div></div>
         `;
         grid.appendChild(card);
+        scrollObserver.observe(card);
 
         const repoData = await ghFetch(`https://api.github.com/repos/${plugin.repo}`);
         const main = card.querySelector('.plugin-card-main');
 
-        const name = repoData ? repoData.name : plugin.repo.split('/')[1];
-        const desc = repoData ? (repoData.description || 'No description provided.') : 'Could not load description.';
-        const stars = repoData ? repoData.stargazers_count : '-';
-        const forks = repoData ? repoData.forks_count : '-';
-        const repoUrl = repoData ? repoData.html_url : `https://github.com/${plugin.repo}`;
+        const name    = repoData ? repoData.name                              : plugin.repo.split('/')[1];
+        const desc    = repoData ? (repoData.description || 'No description provided.') : 'Could not load description.';
+        const stars   = repoData ? repoData.stargazers_count                  : '-';
+        const forks   = repoData ? repoData.forks_count                       : '-';
+        const repoUrl = repoData ? repoData.html_url                          : `https://github.com/${plugin.repo}`;
 
         main.innerHTML = `
           <div class="plugin-card-icon">${plugin.icon}</div>
@@ -527,7 +634,7 @@
           <p class="plugin-card-desc">${desc}</p>
           <div class="plugin-stats">
             <span class="plugin-stat">⭐ ${stars}</span>
-            <span class="plugin-stat"> ${forks}</span>
+            <span class="plugin-stat">🍴 ${forks}</span>
           </div>
           <div class="plugin-card-actions">
             <a href="${repoUrl}" class="plugin-link" target="_blank">View on GitHub ↗</a>
@@ -540,6 +647,8 @@
       placeholder.className = 'plugin-placeholder';
       placeholder.innerHTML = '<span>🔧</span><p>More plugins coming soon.<br>Check back later!</p>';
       grid.appendChild(placeholder);
+
+      observeAnimItems();
     }
 
     buildPluginCards();
