@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>If-Master - Portfolio</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+
+  <nav>
+    <a href="#" class="nav-logo">If-Master</a>
+    <div class="page-tabs">
+      <button class="page-tab active"  onclick="switchPage('portfolio',  this)">Portfolio</button>
+      <button class="page-tab" id="tab-redacted" onclick="switchPage('redacted', this)" style="display:none">Redacted</button>
+      <button class="page-tab"         onclick="switchPage('plugins',    this)">Plugins</button>
+      <button class="page-tab"         onclick="switchPage('updatelogs', this)">Update Logs</button>
+    </div>
+  </nav>
+
+
+  <div id="page-portfolio" class="page-view active">
+
+    <div class="hero">
+      <div class="hero-inner">
+        <span class="hero-badge">Currently not available</span>
+        <h1>Hi, I'm <em>If-Master</em> -<br>a developer &amp; business founder.</h1>
+        <p class="hero-sub">I build thoughtful digital products with a focus on clean code, great UX, QOL, and purposeful design.</p>
+      </div>
+    </div>
+
+    <div class="section-tabs-bar">
+      <button class="sec-tab" onclick="toggleSection('about',   this)">About Me  <span class="arrow">▼</span></button>
+      <button class="sec-tab" onclick="toggleSection('skills',  this)">Skills    <span class="arrow">▼</span></button>
+      <button class="sec-tab" onclick="toggleSection('projects',this)">Projects  <span class="arrow">▼</span></button>
+      <button class="sec-tab" onclick="toggleSection('contact', this)">Contact   <span class="arrow">▼</span></button>
+    </div>
+
+    <div id="panel-about" class="section-panel">
+      <p class="section-label">About Me</p>
+      <h2>A little about who I am</h2>
+      <p class="section-text">I'm a passionate developer based somewhere on Earth. I love solving real problems with technology, learning new things every day, and building products that matter to people.</p>
+      <div class="about-grid">
+        <div class="about-card anim-item">
+          <h3>Currently</h3>
+          <p>Working on Minecraft plugins such as a claims plugin, and exploring new development challenges.</p>
+        </div>
+        <div class="about-card anim-item">
+          <h3>Education</h3>
+          <p>Multiple degrees - including formal qualifications in SQL and Python. Self-taught in Java, Lua, C++ and more.</p>
+        </div>
+        <div class="about-card anim-item">
+          <h3>Outside Work</h3>
+          <p>Actively chasing new knowledge across multiple disciplines. If I haven't done it before, I want to learn it - that's my hobby.</p>
+        </div>
+        <div class="about-card anim-item">
+          <h3>Languages</h3>
+          <p>Fluent in Finnish, Swedish, and English - plus a few others. Communication across borders is never a problem.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel-divider"></div>
+
+    <div id="panel-skills" class="section-panel">
+      <p class="section-label">Skills</p>
+      <h2>What I work with</h2>
+      <p class="section-text">A snapshot of the tools, languages, and technologies I'm comfortable with.</p>
+      <div class="skills-grid">
+        <div class="skill-item anim-item">
+          <h3><span class="skill-dot"></span>Frontend</h3>
+          <p>HTML, CSS, JavaScript, React - building things people actually see and use.</p>
+        </div>
+        <div class="skill-item anim-item">
+          <h3><span class="skill-dot"></span>Game Plugin Development</h3>
+          <p>Specialising in optimised plugins that use less RAM than typical solutions.</p>
+        </div>
+        <div class="skill-item anim-item">
+          <h3><span class="skill-dot"></span>Design Standards</h3>
+          <p>Everything I ship meets a golden standard. If it's not good enough, it doesn't go out.</p>
+        </div>
+        <div class="skill-item anim-item">
+          <h3><span class="skill-dot"></span>Spoken Languages</h3>
+          <p>Finnish, Swedish, English and more - bridging communication gaps comes naturally.</p>
+        </div>
+        <div class="skill-item anim-item">
+          <h3><span class="skill-dot"></span>Always Learning</h3>
+          <p>Currently exploring: fast and RAM-efficient algorithm development.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel-divider"></div>
+
+    <div id="panel-projects" class="section-panel">
+      <p class="section-label">Projects</p>
+      <h2>Things I've built</h2>
+      <p class="section-text">A selection of personal and professional projects.</p>
+      <div class="projects-grid">
+        <div class="project-card anim-item">
+          <span class="project-tag">Minecraft Plugin - Playerheads</span>
+          <h3>HeadHunter</h3>
+          <p>An advanced player head plugin using methods like API pulling, base64 head code and more.</p>
+          <a href="https://github.com/If-Master/HeadHunter" class="project-link" target="_blank">github.com/If-Master/HeadHunter ↗</a>
+        </div>
+        <div class="project-card anim-item">
+          <span class="project-tag">Minecraft Plugin - Chat</span>
+          <h3>ItemDisplay</h3>
+          <p>Display inventories, items, and admin-pull enderchests and player inventories - works on offline players too.</p>
+          <a href="https://github.com/If-Master/ItemDisplay" class="project-link" target="_blank">github.com/If-Master/ItemDisplay ↗</a>
+        </div>
+        <div class="project-card anim-item">
+          <span class="project-tag">Discord Bots</span>
+          <h3>Discord Bots</h3>
+          <p>Built everything from regex pattern generators to item search functions across various Discord bots.</p>
+          <a href="https://github.com/If-Master/EscapeItems-Discord-Bot" class="project-link" target="_blank">github.com/If-Master/EscapeItems-Discord-Bot ↗</a>
+        </div>
+        <div class="project-card anim-item">
+          <span class="project-tag">Games</span>
+          <h3>Games &amp; More</h3>
+          <p>Various games built in Python and C++. Most are still under NDA - more to be revealed in the future.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel-divider"></div>
+
+    <div id="panel-contact" class="section-panel">
+      <p class="section-label">Contact</p>
+      <h2>Let's talk</h2>
+      <div class="contact-inner">
+        <p>Whether you have a project in mind, a job opportunity, or just want to say hello - my inbox is always open.</p>
+        <div class="social-links">
+          <a href="https://github.com/If-Master"  class="social-link anim-item" target="_blank"><span class="social-icon">🐙</span> github.com/If-Master</a>
+          <a href="https://discord.gg/8BacRJukbF" class="social-link anim-item" target="_blank"><span class="social-icon">🎮</span> discord.gg/8BacRJukbF</a>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <span>© 2026 If-Master</span>
+      <span>Built by If-Master</span>
+    </footer>
+  </div>
+
+
+  <div id="page-redacted" class="page-view">
+    <div class="redacted-hero">
+      <span class="hero-badge">Work in progress</span>
+      <div class="redacted-stamp">REDACTED</div>
+      <p class="redacted-sub">This page isn't ready yet. Check back later.</p>
+    </div>
+    <footer>
+      <span>© 2026 If-Master</span>
+      <span>Built by If-Master</span>
+    </footer>
+  </div>
+
+
+  <div id="page-plugins" class="page-view">
+    <div class="plugins-hero">
+      <span class="hero-badge">Minecraft &amp; More</span>
+      <h1>My <em>Plugins</em></h1>
+      <p>Browse all plugins I've built. Click any card to see the config, edit it, and download your custom version.</p>
+    </div>
+
+    <div class="plugin-tabs-bar">
+      <button class="plugin-tab active" onclick="switchPluginTab('all', this)">All Plugins</button>
+    </div>
+
+    <div id="pluginpanel-all" class="plugin-panel open">
+      <div id="plugin-cards-grid" class="plugin-cards-grid"></div>
+    </div>
+
+    <footer>
+      <span>© 2026 If-Master</span>
+      <span>Built by If-Master</span>
+    </footer>
+  </div>
+
+
+
+  <div id="page-updatelogs" class="page-view">
+    <div class="updatelogs-hero">
+      <span class="hero-badge">Changelog</span>
+      <h1>Update <em>Logs</em></h1>
+      <p>Latest releases pulled straight from GitHub. Showing the last 5 updates per plugin.</p>
+    </div>
+
+    <div class="ulog-tabs-bar" id="ulog-tabs-bar"></div>
+    <div id="ulog-panels"></div>
+
+    <footer>
+      <span>© 2026 If-Master</span>
+      <span>Built by If-Master & Hosted on github</span>
+    </footer>
+  </div>
+
+
+  <script src="plugins.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
