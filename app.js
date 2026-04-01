@@ -1,6 +1,101 @@
-if (window.SHOW_REDACTED) {
-  document.getElementById('tab-redacted').style.display = '';
+const TOKEN_KEY = 'gh_pat';
+const CACHE_TTL = 5 * 60 * 1000;
+
+function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+function setToken(t) { t ? localStorage.setItem(TOKEN_KEY, t.trim()) : localStorage.removeItem(TOKEN_KEY); }
+
+function cacheGet(url) {
+  try {
+    const raw = sessionStorage.getItem('ghc:' + url);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) { sessionStorage.removeItem('ghc:' + url); return null; }
+    return data;
+  } catch { return null; }
 }
+
+function cacheSet(url, data) {
+  try { sessionStorage.setItem('ghc:' + url, JSON.stringify({ data, ts: Date.now() })); } catch {}
+}
+
+let rateLimited = false;
+
+async function ghFetch(url) {
+  const cached = cacheGet(url);
+  if (cached !== null) return cached;
+  const headers = { Accept: 'application/vnd.github+json' };
+  const tok = getToken();
+  if (tok) headers['Authorization'] = 'Bearer ' + tok;
+  const r = await fetch(url, { headers });
+  if (r.status === 403 || r.status === 429) { rateLimited = true; showRateLimitBanner(); return null; }
+  if (!r.ok) return null;
+  const data = await r.json();
+  cacheSet(url, data);
+  return data;
+}
+
+function showRateLimitBanner() {
+  if (document.getElementById('rate-limit-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'rate-limit-banner';
+  banner.style.cssText = `
+    position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);
+    background:#1a1a2e;border:1px solid #f7a24f;border-radius:10px;
+    padding:.85rem 1.25rem;z-index:9999;max-width:520px;width:calc(100% - 2.5rem);
+    font-family:'DM Sans',sans-serif;font-size:.82rem;color:#f7a24f;
+    box-shadow:0 8px 32px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:.6rem;`;
+  banner.innerHTML = `
+    <strong style="font-size:.9rem;">⚠ GitHub API rate limit reached</strong>
+    <span style="color:#7a91b5;">
+      GitHub allows 60 unauthenticated requests/hour per IP.
+      Paste a <a href="https://github.com/settings/tokens/new?description=Portfolio+reader&scopes=public_repo"
+      target="_blank" style="color:#4f8ef7;">read-only PAT</a> to get 5,000/hr.
+      Your token stays in <em>your</em> browser only.
+    </span>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+      <input id="pat-input" type="password" placeholder="ghp_…" value="${getToken()}"
+        style="flex:1;min-width:180px;padding:7px 10px;border-radius:6px;border:1px solid #2e5590;
+               background:#07101f;color:#e8edf5;font-family:inherit;font-size:.82rem;outline:none;"/>
+      <button onclick="applyToken()" style="
+        padding:7px 14px;border-radius:6px;background:#4f8ef7;color:#fff;border:none;
+        cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:600;">Save &amp; Reload</button>
+      <button onclick="dismissBanner()" style="
+        padding:7px 10px;border-radius:6px;background:transparent;color:#7a91b5;
+        border:1px solid #1e3057;cursor:pointer;font-family:inherit;font-size:.82rem;">Dismiss</button>
+    </div>`;
+  document.body.appendChild(banner);
+}
+
+function applyToken() {
+  setToken(document.getElementById('pat-input')?.value?.trim());
+  sessionStorage.clear();
+  location.reload();
+}
+
+function dismissBanner() {
+  document.getElementById('rate-limit-banner')?.remove();
+}
+
+function injectTokenBtn() {
+  const nav = document.querySelector('nav');
+  if (!nav) return;
+  const active = !!getToken();
+  const btn = document.createElement('button');
+  btn.id = 'token-btn';
+  btn.title = active ? 'GitHub token active — click to change' : 'Add GitHub token for higher rate limits';
+  btn.style.cssText = `
+    margin-left:.5rem;padding:5px 11px;border-radius:8px;
+    font-size:.75rem;font-weight:600;cursor:pointer;
+    border:1px solid ${active ? '#4f8ef7' : '#1e3057'};
+    background:${active ? 'rgba(79,142,247,.15)' : 'transparent'};
+    color:${active ? '#4f8ef7' : '#7a91b5'};
+    font-family:'DM Sans',sans-serif;transition:all .2s;white-space:nowrap;`;
+  btn.textContent = active ? '🔑 Token active' : '🔑 Add token';
+  btn.onclick = () => document.getElementById('rate-limit-banner') ? dismissBanner() : showRateLimitBanner();
+  nav.appendChild(btn);
+}
+
+if (window.SHOW_REDACTED) document.getElementById('tab-redacted').style.display = '';
 
 function switchPage(id, btn) {
   document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
@@ -49,42 +144,31 @@ function observeAnimItems() {
   document.querySelectorAll('.anim-item').forEach(el => scrollObserver.observe(el));
 }
 
-async function ghFetch(url) {
-  const r = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } });
-  if (!r.ok) return null;
-  return r.json();
-}
-
 async function fetchConfigYml(repo) {
   for (const path of window.CONFIG_PATHS) {
     const d = await ghFetch(`https://api.github.com/repos/${repo}/contents/${path}`);
-    if (d && d.content) return atob(d.content.replace(/\n/g, ''));
+    if (d?.content) return atob(d.content.replace(/\n/g, ''));
   }
   return null;
 }
 
-async function fetchLatestRelease(repo) {
-  const d = await ghFetch(`https://api.github.com/repos/${repo}/releases/latest`);
-  if (!d || !d.assets) return null;
-  const jar = d.assets.find(a => a.name.endsWith('.jar'));
-  if (!jar) return null;
-  return { name: jar.name, url: jar.browser_download_url, version: d.tag_name };
+async function fetchReleases(repo) {
+  const d = await ghFetch(`https://api.github.com/repos/${repo}/releases?per_page=10`);
+  return Array.isArray(d) ? d : [];
 }
 
-async function fetchLatestBeta(repo) {
-  if (!repo) return null;
-  const releases = await ghFetch(`https://api.github.com/repos/${repo}/releases?per_page=10`);
-  if (!Array.isArray(releases)) return null;
-  const pre = releases.find(r => r.prerelease);
-  if (!pre) return null;
-  const jar = pre.assets && pre.assets.find(a => a.name.endsWith('.jar'));
-  if (!jar) return null;
-  return { name: jar.name, url: jar.browser_download_url, version: pre.tag_name, releaseUrl: pre.html_url };
+function extractStable(releases) {
+  const r = releases.find(r => !r.prerelease);
+  if (!r?.assets) return null;
+  const jar = r.assets.find(a => a.name.endsWith('.jar'));
+  return jar ? { name: jar.name, url: jar.browser_download_url, version: r.tag_name } : null;
 }
 
-async function fetchReleases(repo, limit = 5) {
-  const d = await ghFetch(`https://api.github.com/repos/${repo}/releases?per_page=${limit}`);
-  return Array.isArray(d) ? d.slice(0, limit) : [];
+function extractBeta(releases) {
+  const r = releases.find(r => r.prerelease);
+  if (!r?.assets) return null;
+  const jar = r.assets.find(a => a.name.endsWith('.jar'));
+  return jar ? { name: jar.name, url: jar.browser_download_url, version: r.tag_name, releaseUrl: r.html_url } : null;
 }
 
 function esc(s) {
@@ -105,17 +189,14 @@ function highlightYaml(raw) {
 }
 
 function colorValue(val) {
-  if (!val || !val.trim()) return val;
-  const ci   = val.search(/ #/);
-  let main   = val, com = '';
-  if (ci !== -1) {
-    main = val.slice(0, ci);
-    com  = `<span class="hl-comment">${val.slice(ci)}</span>`;
-  }
+  if (!val?.trim()) return val;
+  const ci = val.search(/ #/);
+  let main = val, com = '';
+  if (ci !== -1) { main = val.slice(0, ci); com = `<span class="hl-comment">${val.slice(ci)}</span>`; }
   const t = main.trim();
-  if (/^["']/.test(t))                          return `<span class="hl-string">${main}</span>${com}`;
-  if (/^(true|false|yes|no|null|~)$/i.test(t))  return `<span class="hl-bool">${main}</span>${com}`;
-  if (/^-?\d+(\.\d+)?$/.test(t))                return `<span class="hl-num">${main}</span>${com}`;
+  if (/^["']/.test(t))                         return `<span class="hl-string">${main}</span>${com}`;
+  if (/^(true|false|yes|no|null|~)$/i.test(t)) return `<span class="hl-bool">${main}</span>${com}`;
+  if (/^-?\d+(\.\d+)?$/.test(t))               return `<span class="hl-num">${main}</span>${com}`;
   return `<span class="hl-value">${main}</span>${com}`;
 }
 
@@ -161,11 +242,7 @@ function toggleDrawer(cardEl, repo, spigotUrl, betaRepo) {
   const drawer = cardEl.querySelector('.plugin-drawer');
   const isOpen = drawer.classList.contains('open');
 
-  if (isOpen) {
-    drawer.classList.remove('open');
-    btn.classList.remove('open');
-    return;
-  }
+  if (isOpen) { drawer.classList.remove('open'); btn.classList.remove('open'); return; }
 
   drawer.classList.add('open');
   btn.classList.add('open');
@@ -179,21 +256,26 @@ function toggleDrawer(cardEl, repo, spigotUrl, betaRepo) {
 
   Promise.all([
     fetchConfigYml(repo),
-    fetchLatestRelease(repo),
-    fetchLatestBeta(betaRepo || null),
-  ]).then(([config, release, beta]) => {
+    fetchReleases(repo),
+  ]).then(([config, releases]) => {
+    if (rateLimited) {
+      inner.innerHTML = `<p class="drawer-no-item" style="color:#f7a24f;">
+        ⚠ Rate limit hit — add a token (🔑) to load content.</p>`;
+      return;
+    }
+
+    const release = extractStable(releases);
+    const beta    = betaRepo ? extractBeta(releases) : null;
     let html = '';
 
     html += `<span class="drawer-section-label">config.yml</span>`;
     if (config) {
-      const safe = esc(config);
       html += `<span class="config-hint">You can edit this config before downloading</span>`;
       html += `<div class="config-editor-wrap">`;
       html +=   `<pre class="config-highlight" id="pre-${uid}" aria-hidden="true"></pre>`;
       html +=   `<textarea class="config-editor" id="${uid}" spellcheck="false"
-                   oninput="syncHighlight('${uid}')"
-                   onscroll="syncScroll('${uid}')"
-                   onkeydown="handleTab(event)">${safe}</textarea>`;
+                   oninput="syncHighlight('${uid}')" onscroll="syncScroll('${uid}')"
+                   onkeydown="handleTab(event)">${esc(config)}</textarea>`;
       html += `</div>`;
       html += `<div class="drawer-actions">`;
       html +=   `<button class="download-btn" onclick="downloadConfig('${uid}')">⬇ Download config.yml</button>`;
@@ -226,15 +308,13 @@ function toggleDrawer(cardEl, repo, spigotUrl, betaRepo) {
       }
     }
 
-    if (betaRepo !== null && betaRepo !== undefined) {
+    if (betaRepo != null) {
       html += `<span class="drawer-section-label beta-label" style="margin-top:1.5rem;display:block;">`;
       html +=   `Beta / Pre-release${beta ? ' — ' + beta.version : ''}`;
       html += `</span>`;
       if (beta) {
         html += `<div class="drawer-actions">`;
-        html +=   `<a class="download-btn beta-btn" href="${beta.url}" download target="_blank">`;
-        html +=     `⚡ Download Beta ${esc(beta.name)}`;
-        html +=   `</a>`;
+        html +=   `<a class="download-btn beta-btn" href="${beta.url}" download target="_blank">⚡ Download Beta ${esc(beta.name)}</a>`;
         html +=   `<a class="download-btn secondary" href="${esc(beta.releaseUrl)}" target="_blank">Release Notes ↗</a>`;
         html += `</div>`;
         html += `<p class="beta-warning">⚠ Beta builds may be unstable. Use in production at your own risk.</p>`;
@@ -249,53 +329,60 @@ function toggleDrawer(cardEl, repo, spigotUrl, betaRepo) {
       syncHighlight(uid);
       const ta   = document.getElementById(uid);
       const orig = ta.value;
-      document.getElementById('reset-' + uid).onclick = () => {
-        ta.value = orig;
-        syncHighlight(uid);
-      };
+      document.getElementById('reset-' + uid).onclick = () => { ta.value = orig; syncHighlight(uid); };
     }
   });
+}
+
+function skeletonCard(plugin) {
+  return `
+    <div class="plugin-card-main">
+      <div class="plugin-card-icon">${plugin.icon}</div>
+      <div class="plugin-meta">${plugin.badges.map(b => `<span class="plugin-badge">${b}</span>`).join('')}</div>
+      <div class="skeleton" style="width:60%;height:16px;margin-bottom:10px;"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton" style="width:85%;"></div>
+      <div class="plugin-stats" style="margin-top:1rem;">
+        <div class="skeleton" style="width:50px;height:12px;margin:0;"></div>
+        <div class="skeleton" style="width:50px;height:12px;margin:0;"></div>
+      </div>
+      <div class="plugin-card-actions">
+        <div class="skeleton" style="width:120px;height:12px;margin:0;"></div>
+        <div class="skeleton" style="width:80px;height:28px;margin:0;border-radius:6px;"></div>
+      </div>
+    </div>
+    <div class="plugin-drawer"><div class="plugin-drawer-inner"></div></div>`;
 }
 
 async function buildPluginCards() {
   const grid = document.getElementById('plugin-cards-grid');
 
-  for (const plugin of window.PLUGINS) {
+  const cards = window.PLUGINS.map(plugin => {
     const card = document.createElement('div');
     card.className = 'plugin-card anim-item';
-
-    card.innerHTML = `
-      <div class="plugin-card-main">
-        <div class="plugin-card-icon">${plugin.icon}</div>
-        <div class="plugin-meta">${plugin.badges.map(b => `<span class="plugin-badge">${b}</span>`).join('')}</div>
-        <div class="skeleton" style="width:60%;height:16px;margin-bottom:10px;"></div>
-        <div class="skeleton"></div>
-        <div class="skeleton" style="width:85%;"></div>
-        <div class="plugin-stats" style="margin-top:1rem;">
-          <div class="skeleton" style="width:50px;height:12px;margin:0;"></div>
-          <div class="skeleton" style="width:50px;height:12px;margin:0;"></div>
-        </div>
-        <div class="plugin-card-actions">
-          <div class="skeleton" style="width:120px;height:12px;margin:0;"></div>
-          <div class="skeleton" style="width:80px;height:28px;margin:0;border-radius:6px;"></div>
-        </div>
-      </div>
-      <div class="plugin-drawer"><div class="plugin-drawer-inner"></div></div>`;
-
+    card.innerHTML = skeletonCard(plugin);
     grid.appendChild(card);
     scrollObserver.observe(card);
+    return card;
+  });
 
-    const rd       = await ghFetch(`https://api.github.com/repos/${plugin.repo}`);
-    const main     = card.querySelector('.plugin-card-main');
-    const name     = rd ? rd.name                                       : plugin.repo.split('/')[1];
-    const desc     = rd ? (rd.description || 'No description provided.') : 'Could not load description.';
-    const stars    = rd ? rd.stargazers_count                           : '-';
-    const forks    = rd ? rd.forks_count                                : '-';
-    const repoUrl  = rd ? rd.html_url                                   : `https://github.com/${plugin.repo}`;
+  const repoData = await Promise.all(
+    window.PLUGINS.map(p => ghFetch(`https://api.github.com/repos/${p.repo}`))
+  );
 
-    let extraBadges = '';
-    if (plugin.spigotUrl) extraBadges += `<span class="plugin-badge spigot-badge">Spigot</span>`;
-    if (plugin.betaRepo)  extraBadges += `<span class="plugin-badge beta-badge">Beta Available</span>`;
+  window.PLUGINS.forEach((plugin, i) => {
+    const rd      = repoData[i];
+    const main    = cards[i].querySelector('.plugin-card-main');
+    const name    = rd?.name                ?? plugin.repo.split('/')[1];
+    const desc    = rd?.description         ?? (rateLimited ? '⚠ Rate limited — add a token (🔑) to load.' : 'Could not load description.');
+    const stars   = rd?.stargazers_count    ?? '—';
+    const forks   = rd?.forks_count         ?? '—';
+    const repoUrl = rd?.html_url            ?? `https://github.com/${plugin.repo}`;
+
+    const extraBadges = [
+      plugin.spigotUrl ? `<span class="plugin-badge spigot-badge">Spigot</span>`       : '',
+      plugin.betaRepo  ? `<span class="plugin-badge beta-badge">Beta Available</span>` : '',
+    ].join('');
 
     const spigotArg = plugin.spigotUrl ? `'${plugin.spigotUrl}'` : 'null';
     const betaArg   = plugin.betaRepo  ? `'${plugin.betaRepo}'`  : 'null';
@@ -319,7 +406,7 @@ async function buildPluginCards() {
           Details <span class="earrow">▼</span>
         </button>
       </div>`;
-  }
+  });
 
   const ph = document.createElement('div');
   ph.className = 'plugin-placeholder';
@@ -336,8 +423,7 @@ function fmtDate(s) {
 function truncBody(body, max = 380) {
   if (!body) return 'No release notes provided.';
   const c = body.replace(/\r\n/g, '\n').trim();
-  if (c.length <= max) return c;
-  return c.slice(0, max).replace(/\s+\S*$/, '') + '\u2026';
+  return c.length <= max ? c : c.slice(0, max).replace(/\s+\S*$/, '') + '\u2026';
 }
 
 function buildUpdateLogs() {
@@ -376,7 +462,13 @@ function switchUlogTab(panelId, btn, plugin) {
 
 async function loadUlogPanel(panel, plugin) {
   panel.dataset.loaded = '1';
-  const releases = await fetchReleases(plugin.repo, 5);
+  const releases = (await fetchReleases(plugin.repo)).slice(0, 5);
+
+  if (rateLimited) {
+    panel.innerHTML = `<p class="ulog-empty" style="color:#f7a24f;">
+      ⚠ Rate limit hit — add a token (🔑 top-right) to load release logs.</p>`;
+    return;
+  }
 
   if (!releases.length) {
     panel.innerHTML = '<p class="ulog-empty">No releases published yet for this plugin.</p>';
@@ -385,25 +477,20 @@ async function loadUlogPanel(panel, plugin) {
 
   let html = '<div class="release-list">';
   for (const r of releases) {
-    const bodyRaw = truncBody(r.body);
-    const bodyEsc = esc(bodyRaw);
-    const hasMore = r.body && r.body.trim().length > 380;
-    const date    = r.published_at ? fmtDate(r.published_at) : '';
-    const title   = esc(r.name || r.tag_name);
-    const tag     = esc(r.tag_name);
+    const bodyRaw  = truncBody(r.body);
+    const hasMore  = r.body && r.body.trim().length > 380;
     const preBadge = r.prerelease
       ? `<span class="release-tag beta-badge" style="background:rgba(247,162,79,.15);color:#f7a24f;border:1px solid #f7a24f33;">BETA</span>`
       : '';
-
     html += `
       <div class="release-card anim-item">
         <div class="release-header">
-          <span class="release-tag">${tag}</span>
+          <span class="release-tag">${esc(r.tag_name)}</span>
           ${preBadge}
-          <span class="release-date">${date}</span>
+          <span class="release-date">${r.published_at ? fmtDate(r.published_at) : ''}</span>
         </div>
-        <div class="release-name">${title}</div>
-        <pre class="release-body">${bodyEsc}</pre>
+        <div class="release-name">${esc(r.name || r.tag_name)}</div>
+        <pre class="release-body">${esc(bodyRaw)}</pre>
         <a href="${r.html_url}" class="release-readmore" target="_blank">
           ${hasMore ? 'Read more — press here ↗' : 'View on GitHub Releases ↗'}
         </a>
@@ -415,5 +502,6 @@ async function loadUlogPanel(panel, plugin) {
   panel.querySelectorAll('.anim-item').forEach(el => scrollObserver.observe(el));
 }
 
+injectTokenBtn();
 buildPluginCards();
 buildUpdateLogs();
