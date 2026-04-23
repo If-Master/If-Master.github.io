@@ -1,21 +1,41 @@
-const TOKEN_KEY = 'gh_pat';
-const CACHE_TTL = 5 * 60 * 1000;
+const TOKEN_KEY  = 'gh_pat';
+const CACHE_TTL  = 24 * 60 * 60 * 1000;   
+const CACHE_PFX  = 'ghc:';                 
+const SHA_KEY    = 'gh_sha_store';         
 
 function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
-function setToken(t) { t ? localStorage.setItem(TOKEN_KEY, t.trim()) : localStorage.removeItem(TOKEN_KEY); }
+function setToken(t) {
+  t ? localStorage.setItem(TOKEN_KEY, t.trim())
+    : localStorage.removeItem(TOKEN_KEY);
+}
 
 function cacheGet(url) {
   try {
-    const raw = sessionStorage.getItem('ghc:' + url);
+    const raw = localStorage.getItem(CACHE_PFX + url);
     if (!raw) return null;
     const { data, ts } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL) { sessionStorage.removeItem('ghc:' + url); return null; }
+    if (Date.now() - ts > CACHE_TTL) {
+      localStorage.removeItem(CACHE_PFX + url);
+      return null;
+    }
     return data;
   } catch { return null; }
 }
 
 function cacheSet(url, data) {
-  try { sessionStorage.setItem('ghc:' + url, JSON.stringify({ data, ts: Date.now() })); } catch {}
+  try {
+    localStorage.setItem(CACHE_PFX + url, JSON.stringify({ data, ts: Date.now() }));
+  } catch {}
+}
+
+function shaStore() {
+  try { return JSON.parse(localStorage.getItem(SHA_KEY) || '{}'); } catch { return {}; }
+}
+function getStoredSha(url)      { return shaStore()[url] ?? null; }
+function setStoredSha(url, sha) {
+  const s = shaStore();
+  s[url] = sha;
+  localStorage.setItem(SHA_KEY, JSON.stringify(s));
 }
 
 let rateLimited = false;
@@ -23,13 +43,30 @@ let rateLimited = false;
 async function ghFetch(url) {
   const cached = cacheGet(url);
   if (cached !== null) return cached;
+
   const headers = { Accept: 'application/vnd.github+json' };
   const tok = getToken();
   if (tok) headers['Authorization'] = 'Bearer ' + tok;
+
   const r = await fetch(url, { headers });
-  if (r.status === 403 || r.status === 429) { rateLimited = true; showRateLimitBanner(); return null; }
+
+  if (r.status === 403 || r.status === 429) {
+    rateLimited = true;
+    showRateLimitBanner();
+    return null;
+  }
   if (!r.ok) return null;
+
   const data = await r.json();
+
+  if (url.includes('/contents/') && data?.sha) {
+    const prevSha = getStoredSha(url);
+    if (prevSha && prevSha !== data.sha) {
+      console.info(`[GH Cache] Change detected: ${url.split('/contents/')[1]} (${prevSha.slice(0,7)} → ${data.sha.slice(0,7)})`);
+    }
+    setStoredSha(url, data.sha);
+  }
+
   cacheSet(url, data);
   return data;
 }
@@ -68,7 +105,9 @@ function showRateLimitBanner() {
 
 function applyToken() {
   setToken(document.getElementById('pat-input')?.value?.trim());
-  sessionStorage.clear();
+  Object.keys(localStorage)
+    .filter(k => k.startsWith(CACHE_PFX))
+    .forEach(k => localStorage.removeItem(k));
   location.reload();
 }
 
@@ -80,9 +119,11 @@ function injectTokenBtn() {
   const nav = document.querySelector('nav');
   if (!nav) return;
   const active = !!getToken();
-  const btn = document.createElement('button');
-  btn.id = 'token-btn';
-  btn.title = active ? 'GitHub token active — click to change' : 'Add GitHub token for higher rate limits';
+  const btn    = document.createElement('button');
+  btn.id        = 'token-btn';
+  btn.title     = active
+    ? 'GitHub token active - click to change'
+    : 'Add GitHub token for higher rate limits';
   btn.style.cssText = `
     margin-left:.5rem;padding:5px 11px;border-radius:8px;
     font-size:.75rem;font-weight:600;cursor:pointer;
@@ -91,7 +132,8 @@ function injectTokenBtn() {
     color:${active ? '#4f8ef7' : '#7a91b5'};
     font-family:'DM Sans',sans-serif;transition:all .2s;white-space:nowrap;`;
   btn.textContent = active ? '🔑 Token active' : '🔑 Add token';
-  btn.onclick = () => document.getElementById('rate-limit-banner') ? dismissBanner() : showRateLimitBanner();
+  btn.onclick = () =>
+    document.getElementById('rate-limit-banner') ? dismissBanner() : showRateLimitBanner();
   nav.appendChild(btn);
 }
 
@@ -168,7 +210,9 @@ function extractBeta(releases) {
   const r = releases.find(r => r.prerelease);
   if (!r?.assets) return null;
   const jar = r.assets.find(a => a.name.endsWith('.jar'));
-  return jar ? { name: jar.name, url: jar.browser_download_url, version: r.tag_name, releaseUrl: r.html_url } : null;
+  return jar
+    ? { name: jar.name, url: jar.browser_download_url, version: r.tag_name, releaseUrl: r.html_url }
+    : null;
 }
 
 function esc(s) {
@@ -192,11 +236,14 @@ function colorValue(val) {
   if (!val?.trim()) return val;
   const ci = val.search(/ #/);
   let main = val, com = '';
-  if (ci !== -1) { main = val.slice(0, ci); com = `<span class="hl-comment">${val.slice(ci)}</span>`; }
+  if (ci !== -1) {
+    main = val.slice(0, ci);
+    com  = `<span class="hl-comment">${val.slice(ci)}</span>`;
+  }
   const t = main.trim();
   if (/^["']/.test(t))                         return `<span class="hl-string">${main}</span>${com}`;
   if (/^(true|false|yes|no|null|~)$/i.test(t)) return `<span class="hl-bool">${main}</span>${com}`;
-  if (/^-?\d+(\.\d+)?$/.test(t))               return `<span class="hl-num">${main}</span>${com}`;
+  if (/^-?\d+(\.\d+)?$/.test(t))              return `<span class="hl-num">${main}</span>${com}`;
   return `<span class="hl-value">${main}</span>${com}`;
 }
 
@@ -260,7 +307,7 @@ function toggleDrawer(cardEl, repo, spigotUrl, betaRepo) {
   ]).then(([config, releases]) => {
     if (rateLimited) {
       inner.innerHTML = `<p class="drawer-no-item" style="color:#f7a24f;">
-        ⚠ Rate limit hit — add a token (🔑) to load content.</p>`;
+        ⚠ Rate limit hit - add a token (🔑) to load content.</p>`;
       return;
     }
 
@@ -466,7 +513,7 @@ async function loadUlogPanel(panel, plugin) {
 
   if (rateLimited) {
     panel.innerHTML = `<p class="ulog-empty" style="color:#f7a24f;">
-      ⚠ Rate limit hit — add a token (🔑 top-right) to load release logs.</p>`;
+      ⚠ Rate limit hit - add a token (🔑 top-right) to load release logs.</p>`;
     return;
   }
 
