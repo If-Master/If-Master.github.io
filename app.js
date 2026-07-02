@@ -1,7 +1,43 @@
+const PAGE_TABS = [
+  { id: 'portfolio',   label: 'Portfolio' },
+  { id: 'plugins',     label: 'Plugins',     lazy: () => buildPluginCards() },
+  { id: 'updatelogs',  label: 'Update Logs', lazy: () => buildUpdateLogs() },
+  { id: 'customize',   label: 'Customize',   lazy: () => initCustomizer() },
+  { id: 'redacted',    label: 'Redacted',    hiddenUnless: () => window.SHOW_REDACTED },
+];
+const loadedTabs = new Set();
+
+function buildNav() {
+  const bar = document.getElementById('page-tabs');
+  if (!bar) return;
+  bar.innerHTML = '';
+  PAGE_TABS.forEach((tab, i) => {
+    if (tab.hiddenUnless && !tab.hiddenUnless()) return;
+    const btn = document.createElement('button');
+    btn.className = 'page-tab' + (i === 0 ? ' active' : '');
+    btn.textContent = tab.label;
+    btn.onclick = () => switchPage(tab.id, btn);
+    bar.appendChild(btn);
+  });
+}
+
+function switchPage(id, btn) {
+  document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.page-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id)?.classList.add('active');
+  btn?.classList.add('active');
+
+  const tab = PAGE_TABS.find(t => t.id === id);
+  if (tab?.lazy && !loadedTabs.has(id)) {
+    loadedTabs.add(id);
+    tab.lazy();
+  }
+}
+
 const TOKEN_KEY  = 'gh_pat';
-const CACHE_TTL  = 24 * 60 * 60 * 1000;   
-const CACHE_PFX  = 'ghc:';                 
-const SHA_KEY    = 'gh_sha_store';         
+const CACHE_TTL  = 24 * 60 * 60 * 1000;
+const CACHE_PFX  = 'ghc:';
+const SHA_KEY    = 'gh_sha_store';
 
 function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
 function setToken(t) {
@@ -40,75 +76,79 @@ function setStoredSha(url, sha) {
 
 let rateLimited = false;
 
+let activeFetchCount = 0;
+function setProgressActive(active) {
+  document.getElementById('gh-progress-bar')?.classList.toggle('active', active);
+}
+
 async function ghFetch(url) {
   const cached = cacheGet(url);
   if (cached !== null) return cached;
 
-  const headers = { Accept: 'application/vnd.github+json' };
-  const tok = getToken();
-  if (tok) headers['Authorization'] = 'Bearer ' + tok;
+  activeFetchCount++;
+  setProgressActive(true);
+  try {
+    const headers = { Accept: 'application/vnd.github+json' };
+    const tok = getToken();
+    if (tok) headers['Authorization'] = 'Bearer ' + tok;
 
-  const r = await fetch(url, { headers });
+    const r = await fetch(url, { headers });
 
-  if (r.status === 403 || r.status === 429) {
-    rateLimited = true;
-    showRateLimitBanner();
-    return null;
-  }
-  if (!r.ok) return null;
-
-  const data = await r.json();
-
-  if (url.includes('/contents/') && data?.sha) {
-    const prevSha = getStoredSha(url);
-    if (prevSha && prevSha !== data.sha) {
-      console.info(`[GH Cache] Change detected: ${url.split('/contents/')[1]} (${prevSha.slice(0,7)} → ${data.sha.slice(0,7)})`);
+    if (r.status === 403 || r.status === 429) {
+      rateLimited = true;
+      showRateLimitBanner();
+      return null;
     }
-    setStoredSha(url, data.sha);
-  }
+    if (!r.ok) return null;
 
-  cacheSet(url, data);
-  return data;
+    const data = await r.json();
+
+    if (url.includes('/contents/') && data?.sha) {
+      const prevSha = getStoredSha(url);
+      if (prevSha && prevSha !== data.sha) {
+        console.info(`[GH Cache] Change detected: ${url.split('/contents/')[1]} (${prevSha.slice(0,7)} → ${data.sha.slice(0,7)})`);
+      }
+      setStoredSha(url, data.sha);
+    }
+
+    cacheSet(url, data);
+    return data;
+  } finally {
+    activeFetchCount = Math.max(0, activeFetchCount - 1);
+    if (activeFetchCount === 0) setProgressActive(false);
+  }
+}
+
+function saveTokenAndReload(value) {
+  setToken(value);
+  Object.keys(localStorage)
+    .filter(k => k.startsWith(CACHE_PFX))
+    .forEach(k => localStorage.removeItem(k));
+  location.reload();
 }
 
 function showRateLimitBanner() {
   if (document.getElementById('rate-limit-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'rate-limit-banner';
-  banner.style.cssText = `
-    position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);
-    background:#1a1a2e;border:1px solid #f7a24f;border-radius:10px;
-    padding:.85rem 1.25rem;z-index:9999;max-width:520px;width:calc(100% - 2.5rem);
-    font-family:'DM Sans',sans-serif;font-size:.82rem;color:#f7a24f;
-    box-shadow:0 8px 32px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:.6rem;`;
   banner.innerHTML = `
-    <strong style="font-size:.9rem;">⚠ GitHub API rate limit reached</strong>
-    <span style="color:#7a91b5;">
+    <strong>⚠ GitHub API rate limit reached</strong>
+    <span class="rl-desc">
       GitHub allows 60 unauthenticated requests/hour per IP.
       Paste a <a href="https://github.com/settings/tokens/new?description=Portfolio+reader&scopes=public_repo"
-      target="_blank" style="color:#4f8ef7;">read-only PAT</a> to get 5,000/hr.
+      target="_blank">read-only PAT</a> to get 5,000/hr.
       Your token stays in <em>your</em> browser only.
     </span>
-    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-      <input id="pat-input" type="password" placeholder="ghp_…" value="${getToken()}"
-        style="flex:1;min-width:180px;padding:7px 10px;border-radius:6px;border:1px solid #2e5590;
-               background:#07101f;color:#e8edf5;font-family:inherit;font-size:.82rem;outline:none;"/>
-      <button onclick="applyToken()" style="
-        padding:7px 14px;border-radius:6px;background:#4f8ef7;color:#fff;border:none;
-        cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:600;">Save &amp; Reload</button>
-      <button onclick="dismissBanner()" style="
-        padding:7px 10px;border-radius:6px;background:transparent;color:#7a91b5;
-        border:1px solid #1e3057;cursor:pointer;font-family:inherit;font-size:.82rem;">Dismiss</button>
+    <div class="rl-actions">
+      <input id="pat-input" type="password" placeholder="ghp_…" value="${getToken()}"/>
+      <button onclick="applyToken()">Save &amp; Reload</button>
+      <button class="secondary" onclick="dismissBanner()">Dismiss</button>
     </div>`;
   document.body.appendChild(banner);
 }
 
 function applyToken() {
-  setToken(document.getElementById('pat-input')?.value?.trim());
-  Object.keys(localStorage)
-    .filter(k => k.startsWith(CACHE_PFX))
-    .forEach(k => localStorage.removeItem(k));
-  location.reload();
+  saveTokenAndReload(document.getElementById('pat-input')?.value?.trim());
 }
 
 function dismissBanner() {
@@ -124,26 +164,11 @@ function injectTokenBtn() {
   btn.title     = active
     ? 'GitHub token active - click to change'
     : 'Add GitHub token for higher rate limits';
-  btn.style.cssText = `
-    margin-left:.5rem;padding:5px 11px;border-radius:8px;
-    font-size:.75rem;font-weight:600;cursor:pointer;
-    border:1px solid ${active ? '#4f8ef7' : '#1e3057'};
-    background:${active ? 'rgba(79,142,247,.15)' : 'transparent'};
-    color:${active ? '#4f8ef7' : '#7a91b5'};
-    font-family:'DM Sans',sans-serif;transition:all .2s;white-space:nowrap;`;
+  btn.className = 'token-btn' + (active ? ' active' : '');
   btn.textContent = active ? '🔑 Token active' : '🔑 Add token';
   btn.onclick = () =>
     document.getElementById('rate-limit-banner') ? dismissBanner() : showRateLimitBanner();
   nav.appendChild(btn);
-}
-
-if (window.SHOW_REDACTED) document.getElementById('tab-redacted').style.display = '';
-
-function switchPage(id, btn) {
-  document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.page-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-' + id).classList.add('active');
-  btn.classList.add('active');
 }
 
 function toggleSection(id, btn) {
@@ -306,7 +331,7 @@ function toggleDrawer(cardEl, repo, spigotUrl, betaRepo) {
     fetchReleases(repo),
   ]).then(([config, releases]) => {
     if (rateLimited) {
-      inner.innerHTML = `<p class="drawer-no-item" style="color:#f7a24f;">
+      inner.innerHTML = `<p class="drawer-no-item" style="color:var(--beta);">
         ⚠ Rate limit hit - add a token (🔑) to load content.</p>`;
       return;
     }
@@ -401,8 +426,37 @@ function skeletonCard(plugin) {
     <div class="plugin-drawer"><div class="plugin-drawer-inner"></div></div>`;
 }
 
+function filterPlugins(query) {
+  const q = query.trim().toLowerCase();
+  const grid = document.getElementById('plugin-cards-grid');
+  if (!grid) return;
+
+  let anyVisible = false;
+  grid.querySelectorAll('.plugin-card').forEach(card => {
+    const match = card.textContent.toLowerCase().includes(q);
+    card.style.display = match ? '' : 'none';
+    if (match) anyVisible = true;
+  });
+
+  const placeholder = grid.querySelector('.plugin-placeholder');
+  if (placeholder) placeholder.style.display = q ? 'none' : '';
+
+  let noResults = grid.querySelector('.no-results-msg');
+  if (q && !anyVisible) {
+    if (!noResults) {
+      noResults = document.createElement('div');
+      noResults.className = 'no-results-msg';
+      grid.appendChild(noResults);
+    }
+    noResults.textContent = `No plugins match "${query.trim()}".`;
+  } else if (noResults) {
+    noResults.remove();
+  }
+}
+
 async function buildPluginCards() {
   const grid = document.getElementById('plugin-cards-grid');
+  if (!grid) return;
 
   const cards = window.PLUGINS.map(plugin => {
     const card = document.createElement('div');
@@ -476,6 +530,7 @@ function truncBody(body, max = 380) {
 function buildUpdateLogs() {
   const tabsBar  = document.getElementById('ulog-tabs-bar');
   const panelsEl = document.getElementById('ulog-panels');
+  if (!tabsBar || !panelsEl) return;
 
   window.PLUGINS.forEach((plugin, i) => {
     const name    = plugin.repo.split('/')[1];
@@ -512,7 +567,7 @@ async function loadUlogPanel(panel, plugin) {
   const releases = (await fetchReleases(plugin.repo)).slice(0, 5);
 
   if (rateLimited) {
-    panel.innerHTML = `<p class="ulog-empty" style="color:#f7a24f;">
+    panel.innerHTML = `<p class="ulog-empty" style="color:var(--beta);">
       ⚠ Rate limit hit - add a token (🔑 top-right) to load release logs.</p>`;
     return;
   }
@@ -527,7 +582,7 @@ async function loadUlogPanel(panel, plugin) {
     const bodyRaw  = truncBody(r.body);
     const hasMore  = r.body && r.body.trim().length > 380;
     const preBadge = r.prerelease
-      ? `<span class="release-tag beta-badge" style="background:rgba(247,162,79,.15);color:#f7a24f;border:1px solid #f7a24f33;">BETA</span>`
+      ? `<span class="release-tag beta-badge">BETA</span>`
       : '';
     html += `
       <div class="release-card anim-item">
@@ -549,6 +604,162 @@ async function loadUlogPanel(panel, plugin) {
   panel.querySelectorAll('.anim-item').forEach(el => scrollObserver.observe(el));
 }
 
+const THEME_KEY = 'site_theme_prefs';
+
+const ACCENT_PRESETS = [
+  { name: 'Ocean Blue', hex: '#4f8ef7' },
+  { name: 'Violet',     hex: '#a56bff' },
+  { name: 'Emerald',    hex: '#34d399' },
+  { name: 'Coral',      hex: '#ff6b6b' },
+  { name: 'Gold',       hex: '#f7c94f' },
+];
+const BG_STYLES = [
+  { id: 'solid',    label: 'Solid' },
+  { id: 'gradient', label: 'Gradient' },
+  { id: 'aurora',   label: 'Aurora glow' },
+];
+const MODES = [
+  { id: 'dark',  label: '🌙 Dark' },
+  { id: 'light', label: '☀️ Light' },
+];
+const DEFAULT_THEME = { accent: '#4f8ef7', bg: 'solid', mode: 'dark' };
+
+function hexToRgb(hex) {
+  const m = hex.replace('#', '').match(/.{1,2}/g);
+  return m.map(x => parseInt(x, 16)).join(',');
+}
+
+function loadThemePrefs() {
+  try {
+    return { ...DEFAULT_THEME, ...JSON.parse(localStorage.getItem(THEME_KEY) || '{}') };
+  } catch { return { ...DEFAULT_THEME }; }
+}
+
+function saveThemePrefs(prefs) {
+  localStorage.setItem(THEME_KEY, JSON.stringify(prefs));
+}
+
+function applyTheme(prefs) {
+  const root = document.documentElement;
+  root.style.setProperty('--accent', prefs.accent);
+  root.style.setProperty('--accent-rgb', hexToRgb(prefs.accent));
+  root.style.setProperty('--accent-light', `rgba(${hexToRgb(prefs.accent)}, 0.14)`);
+  document.body.classList.remove('bg-solid', 'bg-gradient', 'bg-aurora');
+  document.body.classList.add('bg-' + prefs.bg);
+  document.body.classList.toggle('theme-light', prefs.mode === 'light');
+}
+
+function initCustomizer() {
+  const mount = document.getElementById('customize-mount');
+  if (!mount) return;
+  const prefs = loadThemePrefs();
+
+  const tok = getToken();
+
+  mount.innerHTML = `
+    <div class="customize-block">
+      <span class="drawer-section-label">Appearance</span>
+      <div class="bgstyle-row" id="mode-row">
+        ${MODES.map(m => `
+          <button class="bgstyle-btn ${m.id === prefs.mode ? 'active' : ''}" data-mode="${m.id}">${m.label}</button>
+        `).join('')}
+      </div>
+    </div>
+    <div class="customize-block">
+      <span class="drawer-section-label">Accent color</span>
+      <div class="swatch-row" id="swatch-row">
+        ${ACCENT_PRESETS.map(p => `
+          <button class="swatch ${p.hex === prefs.accent ? 'active' : ''}"
+            style="--sw:${p.hex}" data-hex="${p.hex}" title="${p.name}"></button>
+        `).join('')}
+        <label class="swatch custom-swatch" title="Custom color">
+          <input type="color" id="custom-color" value="${prefs.accent}">
+        </label>
+      </div>
+    </div>
+    <div class="customize-block">
+      <span class="drawer-section-label">Background style</span>
+      <div class="bgstyle-row" id="bgstyle-row">
+        ${BG_STYLES.map(b => `
+          <button class="bgstyle-btn ${b.id === prefs.bg ? 'active' : ''}" data-bg="${b.id}">${b.label}</button>
+        `).join('')}
+      </div>
+    </div>
+    <div class="customize-block">
+      <span class="drawer-section-label">GitHub token</span>
+      <p class="customize-desc">
+        Optional. Unauthenticated requests are capped at 60/hour by GitHub.
+        Add a read-only
+        <a href="https://github.com/settings/tokens/new?description=Portfolio+reader&scopes=public_repo" target="_blank">personal access token</a>
+        for 5,000/hour. Stored only in this browser.
+      </p>
+      <div class="token-row">
+        <input type="password" id="customize-token-input" placeholder="ghp_…" value="${tok}">
+        <button class="download-btn" id="customize-token-save">Save &amp; Reload</button>
+        <button class="download-btn secondary" id="customize-token-clear">Clear</button>
+      </div>
+      <p class="token-status">${tok ? '🔑 Token active' : 'No token set — using unauthenticated requests'}</p>
+    </div>
+    <div class="customize-block">
+      <button class="download-btn secondary" id="reset-theme-btn">↺ Reset appearance to default</button>
+    </div>`;
+
+  mount.querySelectorAll('#mode-row .bgstyle-btn').forEach(btn => {
+    btn.onclick = () => {
+      const p = loadThemePrefs();
+      p.mode = btn.dataset.mode;
+      saveThemePrefs(p);
+      applyTheme(p);
+      mount.querySelectorAll('#mode-row .bgstyle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+  });
+
+  mount.querySelector('#customize-token-save').onclick = () => {
+    saveTokenAndReload(mount.querySelector('#customize-token-input').value.trim());
+  };
+  mount.querySelector('#customize-token-clear').onclick = () => {
+    saveTokenAndReload('');
+  };
+
+  mount.querySelectorAll('.swatch[data-hex]').forEach(btn => {
+    btn.onclick = () => {
+      const p = loadThemePrefs();
+      p.accent = btn.dataset.hex;
+      saveThemePrefs(p);
+      applyTheme(p);
+      mount.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+    };
+  });
+
+  mount.querySelector('#custom-color').oninput = (e) => {
+    const p = loadThemePrefs();
+    p.accent = e.target.value;
+    saveThemePrefs(p);
+    applyTheme(p);
+    mount.querySelectorAll('.swatch[data-hex]').forEach(s => s.classList.remove('active'));
+  };
+
+  mount.querySelectorAll('#bgstyle-row .bgstyle-btn').forEach(btn => {
+    btn.onclick = () => {
+      const p = loadThemePrefs();
+      p.bg = btn.dataset.bg;
+      saveThemePrefs(p);
+      applyTheme(p);
+      mount.querySelectorAll('#bgstyle-row .bgstyle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+  });
+
+  mount.querySelector('#reset-theme-btn').onclick = () => {
+    saveThemePrefs({ ...DEFAULT_THEME });
+    applyTheme({ ...DEFAULT_THEME });
+    initCustomizer();
+  };
+}
+
+applyTheme(loadThemePrefs());  
+buildNav();
 injectTokenBtn();
-buildPluginCards();
-buildUpdateLogs();
+observeAnimItems();

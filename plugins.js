@@ -3,7 +3,7 @@ window.PLUGINS = [
     repo:      'If-Master/HeadHunter',
     icon:      '💀',
     badges:    ['Player heads & Mob Heads', 'Java', 'Paper & Folia'],
-    spigotUrl: `https://www.spigotmc.org/resources/headhunter.127216/`,   
+    spigotUrl: `https://www.spigotmc.org/resources/headhunter.127216/`,
     betaRepo:  'If-Master/HeadHunter',
   },
   {
@@ -27,7 +27,6 @@ window.PLUGINS = [
     spigotUrl: `https://www.spigotmc.org/resources/punishmentsystem.128658/`,
     betaRepo:  'If-Master/PunishmentSystem',
   },
-
   {
     repo:      'If-Master/ActionRecorder',
     icon:      '🎬',

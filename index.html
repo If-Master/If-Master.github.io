@@ -15,15 +15,11 @@
 </head>
 <body>
 
+  <div id="gh-progress-bar"><div class="bar"></div></div>
 
   <nav>
     <a href="#" class="nav-logo">If-Master</a>
-    <div class="page-tabs">
-      <button class="page-tab active"  onclick="switchPage('portfolio',  this)">Portfolio</button>
-      <button class="page-tab" id="tab-redacted" onclick="switchPage('redacted', this)" style="display:none">Redacted</button>
-      <button class="page-tab"         onclick="switchPage('plugins',    this)">Plugins</button>
-      <button class="page-tab"         onclick="switchPage('updatelogs', this)">Update Logs</button>
-    </div>
+    <div class="page-tabs" id="page-tabs"></div>
   </nav>
 
 
@@ -168,7 +164,11 @@
       <h1>My <em>Plugins</em></h1>
       <p>Browse all plugins I've built. Click any card to see the config, edit it, and download your custom version.</p>
       <p>Note; most stuff might be hidden or hasn't yet been uploaded to github!</p>
+    </div>
 
+    <div class="plugin-search-row">
+      <input type="search" id="plugin-search" class="plugin-search-input"
+        placeholder="Search plugins…" oninput="filterPlugins(this.value)">
     </div>
 
     <div class="plugin-tabs-bar">
@@ -186,7 +186,6 @@
   </div>
 
 
-
   <div id="page-updatelogs" class="page-view">
     <div class="updatelogs-hero">
       <span class="hero-badge">Changelog</span>
@@ -199,7 +198,23 @@
 
     <footer>
       <span>© 2026 If-Master</span>
-      <span>Built by If-Master & Hosted on github</span>
+      <span>Built by If-Master &amp; Hosted on github</span>
+    </footer>
+  </div>
+
+
+  <div id="page-customize" class="page-view">
+    <div class="plugins-hero">
+      <span class="hero-badge">Make it yours</span>
+      <h1><em>Customize</em> the site</h1>
+      <p>Pick an accent color and background style. Saved to this browser, so it's back next time you visit.</p>
+    </div>
+
+    <div class="customize-panel" id="customize-mount"></div>
+
+    <footer>
+      <span>© 2026 If-Master</span>
+      <span>Built by If-Master</span>
     </footer>
   </div>
 
