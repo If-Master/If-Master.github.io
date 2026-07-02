@@ -64,7 +64,6 @@ body.bg-aurora {
   transition: opacity 0.45s ease, transform 0.45s ease;
 }
 .anim-item.visible { opacity: 1; transform: translateY(0); }
-.anim-item.exit    { opacity: 0; transform: translateY(-18px); transition: opacity 0.35s ease, transform 0.35s ease; }
 
 .anim-item:nth-child(2) { transition-delay: .07s; }
 .anim-item:nth-child(3) { transition-delay: .14s; }

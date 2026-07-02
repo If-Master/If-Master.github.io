@@ -195,17 +195,12 @@ function switchPluginTab(id, btn) {
 
 const scrollObserver = new IntersectionObserver(entries => {
   entries.forEach(entry => {
-    const el = entry.target;
     if (entry.isIntersecting) {
-      el.dataset.seen = '1';
-      el.classList.remove('exit');
-      el.classList.add('visible');
-    } else if (el.dataset.seen) {
-      el.classList.remove('visible');
-      el.classList.add('exit');
+      entry.target.classList.add('visible');
+      scrollObserver.unobserve(entry.target);
     }
   });
-}, { threshold: 0.12 });
+}, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
 
 function observeAnimItems() {
   document.querySelectorAll('.anim-item').forEach(el => scrollObserver.observe(el));
@@ -759,7 +754,7 @@ function initCustomizer() {
   };
 }
 
-applyTheme(loadThemePrefs());  
+applyTheme(loadThemePrefs());
 buildNav();
 injectTokenBtn();
 observeAnimItems();
