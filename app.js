@@ -177,12 +177,8 @@ function toggleSection(id, btn) {
   panel.classList.toggle('open', !open);
   btn.classList.toggle('active', !open);
   if (!open) {
-    setTimeout(() => {
-      panel.querySelectorAll('.anim-item').forEach(el => {
-        el.classList.remove('visible', 'exit');
-        scrollObserver.observe(el);
-      });
-    }, 50);
+    panel.querySelectorAll('.anim-item').forEach(el => el.classList.remove('visible'));
+    revealAnimItems(panel);
   }
 }
 
@@ -193,17 +189,10 @@ function switchPluginTab(id, btn) {
   btn.classList.add('active');
 }
 
-const scrollObserver = new IntersectionObserver(entries => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('visible');
-      scrollObserver.unobserve(entry.target);
-    }
+function revealAnimItems(root = document) {
+  requestAnimationFrame(() => {
+    root.querySelectorAll('.anim-item').forEach(el => el.classList.add('visible'));
   });
-}, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
-
-function observeAnimItems() {
-  document.querySelectorAll('.anim-item').forEach(el => scrollObserver.observe(el));
 }
 
 async function fetchConfigYml(repo) {
@@ -458,7 +447,6 @@ async function buildPluginCards() {
     card.className = 'plugin-card anim-item';
     card.innerHTML = skeletonCard(plugin);
     grid.appendChild(card);
-    scrollObserver.observe(card);
     return card;
   });
 
@@ -509,7 +497,7 @@ async function buildPluginCards() {
   ph.innerHTML = '<span>🔧</span><p>More plugins coming soon.<br>Check back later!</p>';
   grid.appendChild(ph);
 
-  observeAnimItems();
+  revealAnimItems(grid);
 }
 
 function fmtDate(s) {
@@ -596,7 +584,7 @@ async function loadUlogPanel(panel, plugin) {
   html += '</div>';
 
   panel.innerHTML = html;
-  panel.querySelectorAll('.anim-item').forEach(el => scrollObserver.observe(el));
+  revealAnimItems(panel);
 }
 
 const THEME_KEY = 'site_theme_prefs';
@@ -757,4 +745,4 @@ function initCustomizer() {
 applyTheme(loadThemePrefs());
 buildNav();
 injectTokenBtn();
-observeAnimItems();
+revealAnimItems();
